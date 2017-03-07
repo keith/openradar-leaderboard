@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+
+import argparse
+import collections
+import json
+import operator
+import os
+
+
+def _output_rows(rows):
+    max_lengths = [0] * len(rows[0])
+    for row in rows:
+        for i, column in enumerate(row):
+            max_lengths[i] = max(len(str(column)), max_lengths[i])
+
+    for row in rows:
+        string = ""
+        for i, column in enumerate(row):
+            spacing = (max_lengths[i] - len(str(column))) * " "
+            string += str(column) + spacing + "\t"
+        print(string)
+
+
+def main(filename, count):
+    rows = []
+    rows.append(["rank", "email", "radars"])
+
+    content = open(filename).read()
+    radars = json.loads(content)["result"]
+    count_by_user = collections.defaultdict(int)
+    for radar in radars:
+        email = radar["user"]
+        count_by_user[email] += 1
+
+    sorted_users = sorted(count_by_user.iteritems(),
+                          key=operator.itemgetter(1), reverse=True)
+    number_of_results = min(len(sorted_users), count)
+    for i, (email, count) in enumerate(sorted_users[0:number_of_results]):
+        rows.append([i + 1, email, count])
+
+    _output_rows(rows)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("filename", help="The openradar JSON file to parse")
+    parser.add_argument("-c", "--count", help="The number of results to show",
+                        type=int, default=20)
+
+    arguments = parser.parse_args()
+    if os.path.isfile(arguments.filename):
+        main(arguments.filename, arguments.count)
+    else:
+        parser.error("'{}' doesn't exist".format(arguments.filename))
